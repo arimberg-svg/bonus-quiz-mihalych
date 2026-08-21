@@ -286,7 +286,8 @@ const EMBEDDED_QUESTIONS = [
 ];
 
 const LETTERS = ["a", "b", "c", "d"];
-const MAIL_ENDPOINT = "https://formsubmit.co/ajax/arimberg@gmail.com";
+const WEB3FORMS_KEY = "63b604c9-ac29-414f-bc13-31e194d0efc1";
+const TO_EMAIL = "arimberg@gmail.com";
 
 let questions = [];
 let answers = [];
@@ -497,129 +498,53 @@ function buildMailPayload(rows, correct, partial, total, pct, byTopic) {
     text.length <= max ? text : `${text.slice(0, max)}\n…(обрезано)`;
 
   return {
-    _subject: `Тест лояльности: ${profile.name} · ${profile.store} · ${profile.role} · ${correct}/${total}`,
-    _template: "table",
-    _captcha: "false",
-    _honey: "",
-    name: profile.name,
-    email: "arimberg@gmail.com",
-    first_name: profile.firstName,
-    last_name: profile.lastName,
-    store: profile.store,
-    position: profile.role,
-    score: `${correct}/${total}`,
-    percent: `${pct}%`,
-    partial: String(partial),
-    topics: clip(topicLines, 3000),
-    mistakes: clip(wrongLines || "Ошибок нет", 6000),
-    answers: clip(allAnswers, 9000),
+    access_key: WEB3FORMS_KEY,
+    subject: `Тест лояльности: ${profile.name} · ${profile.store} · ${profile.role} · ${correct}/${total}`,
+    from_name: "Тест лояльности · У Михалыча",
+    Имя: profile.firstName,
+    Фамилия: profile.lastName,
+    Должность: profile.role,
+    Магазин: profile.store,
+    Балл: `${correct}/${total}`,
+    Процент: `${pct}%`,
+    Частично: String(partial),
+    Темы: clip(topicLines, 3000),
+    Ошибки: clip(wrongLines || "Ошибок нет", 6000),
+    Ответы: clip(allAnswers, 9000),
     message: `Результат теста лояльности «У Михалыча»\nИмя: ${profile.firstName}\nФамилия: ${profile.lastName}\nДолжность: ${profile.role}\nМагазин: ${profile.store}\nБалл: ${correct}/${total} (${pct}%)\nЧастично: ${partial}`,
   };
-}
-
-function payloadToFormData(payload) {
-  const fd = new FormData();
-  Object.entries(payload).forEach(([key, value]) => {
-    fd.append(key, value == null ? "" : String(value));
-  });
-  return fd;
-}
-
-function sendViaHiddenForm(payload) {
-  return new Promise((resolve) => {
-    const frameName = `mail_frame_${Date.now()}`;
-    const iframe = document.createElement("iframe");
-    iframe.name = frameName;
-    iframe.title = "mail";
-    iframe.style.display = "none";
-    document.body.appendChild(iframe);
-
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = "https://formsubmit.co/arimberg@gmail.com";
-    form.target = frameName;
-    form.style.display = "none";
-
-    Object.entries(payload).forEach(([key, value]) => {
-      const input = document.createElement("input");
-      input.type = "hidden";
-      input.name = key;
-      input.value = value == null ? "" : String(value);
-      form.appendChild(input);
-    });
-
-    const next = document.createElement("input");
-    next.type = "hidden";
-    next.name = "_next";
-    next.value = "https://formsubmit.co/thanks.html";
-    form.appendChild(next);
-
-    document.body.appendChild(form);
-    form.submit();
-
-    window.setTimeout(() => {
-      form.remove();
-      iframe.remove();
-      resolve(true);
-    }, 2500);
-  });
 }
 
 async function sendResultEmail(payload) {
   if (!el.mailStatus) return;
   el.mailStatus.className = "mail-status";
-  el.mailStatus.textContent = "Отправляем результат на arimberg@gmail.com…";
-
-  let ajaxOk = false;
-  let activationNeeded = false;
+  el.mailStatus.textContent = `Отправляем результат на ${TO_EMAIL}…`;
 
   try {
-    const res = await fetch(MAIL_ENDPOINT, {
+    const res = await fetch("https://api.web3forms.com/submit", {
       method: "POST",
-      headers: { Accept: "application/json" },
-      body: payloadToFormData(payload),
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
     });
     const data = await res.json().catch(() => ({}));
-    const success = data.success === true || data.success === "true";
-    if (success) {
-      ajaxOk = true;
-    } else {
-      const msg = String(data.message || "");
-      if (/confirm|activation|activate|подтверд/i.test(msg)) {
-        activationNeeded = true;
-      }
-      throw new Error(msg || `HTTP ${res.status}`);
+    if (!res.ok || data.success === false) {
+      throw new Error(data.message || `HTTP ${res.status}`);
     }
-  } catch (err) {
-    console.warn("FormSubmit AJAX:", err);
-    try {
-      await sendViaHiddenForm(payload);
-      ajaxOk = true;
-    } catch (err2) {
-      console.error(err2);
-    }
-  }
-
-  if (ajaxOk && !activationNeeded) {
     el.mailStatus.className = "mail-status ok";
-    el.mailStatus.textContent = "Результат отправлен на arimberg@gmail.com.";
-    return;
-  }
-
-  if (activationNeeded) {
+    el.mailStatus.textContent = `Результат отправлен на ${TO_EMAIL}.`;
+  } catch (err) {
+    console.warn("Web3Forms:", err);
     el.mailStatus.className = "mail-status bad";
-    el.mailStatus.textContent =
-      "FormSubmit ждёт подтверждения: откройте письмо на arimberg@gmail.com и подтвердите адрес — после этого ответы будут приходить.";
-    return;
+    el.mailStatus.innerHTML =
+      `Не удалось подтвердить отправку. Проверьте почту ${TO_EMAIL} (в т.ч. «Спам»). <a href="mailto:${TO_EMAIL}?subject=` +
+      encodeURIComponent(payload.subject) +
+      "&body=" +
+      encodeURIComponent((payload.message + "\n\n" + (payload.Ошибки || "")).slice(0, 1200)) +
+      '">Открыть письмо вручную</a>';
   }
-
-  el.mailStatus.className = "mail-status bad";
-  el.mailStatus.innerHTML =
-    'Не удалось подтвердить отправку. Проверьте почту arimberg@gmail.com (в т.ч. «Спам») и подтвердите FormSubmit при первом письме. <a href="mailto:arimberg@gmail.com?subject=' +
-    encodeURIComponent(payload._subject) +
-    "&body=" +
-    encodeURIComponent(payload.message + "\n\n" + (payload.mistakes || "").slice(0, 1200)) +
-    '">Открыть письмо вручную</a>';
 }
 
 function grade() {

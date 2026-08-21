@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Тест — бонусная система «У Михалыча»</title>
+  <meta name="description" content="Тест для сотрудников: предложение регистрации, регистрация и перенос бонусов программы лояльности «У Михалыча»." />
+  <meta name="theme-color" content="#4208a8" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geologica:wght@600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="top">
+    <div class="wrap top-inner">
+      <a class="brand" href="#">
+        <img class="brand-logo" src="assets/logo.png" alt="У Михалыча" />
+        <span class="brand-tag">Розница · лояльность</span>
+      </a>
+      <span class="chip">Тест для сотрудников</span>
+    </div>
+  </header>
+
+  <main class="wrap shell">
+    <section id="screen-start" class="panel">
+      <p class="eyebrow">Сеть магазинов «У Михалыча»</p>
+      <h1>Тест <span>лояльности</span></h1>
+      <p class="lead">
+        20 вопросов по правилам бонусной системы: как предлагать регистрацию,
+        как регистрировать клиента и как переносить бонусы с номера на номер.
+      </p>
+      <ul class="meta">
+        <li>17 вопросов с вариантами + 3 открытых</li>
+        <li>~12–15 минут</li>
+        <li>Результат уходит на arimberg@gmail.com</li>
+      </ul>
+
+      <form id="start-form" class="start-form" novalidate>
+        <div class="form-grid">
+          <label class="name-field">
+            <span>Имя <em>*</em></span>
+            <input id="user-first-name" type="text" maxlength="80" required placeholder="Иван" autocomplete="given-name" />
+          </label>
+          <label class="name-field">
+            <span>Фамилия <em>*</em></span>
+            <input id="user-last-name" type="text" maxlength="80" required placeholder="Иванов" autocomplete="family-name" />
+          </label>
+        </div>
+        <label class="name-field">
+          <span>Должность <em>*</em></span>
+          <select id="user-role" required>
+            <option value="" disabled selected>Выберите должность</option>
+            <option>Кассир</option>
+            <option>Продавец-консультант</option>
+            <option>СПК</option>
+            <option>РТЗ</option>
+            <option>Супервайзер</option>
+            <option>Другое</option>
+          </select>
+        </label>
+        <label class="name-field">
+          <span>Магазин <em>*</em></span>
+          <input id="user-store" type="text" maxlength="100" required placeholder="Например, Дружбы 66 / Магазин №1" autocomplete="organization" />
+        </label>
+        <p id="form-error" class="form-error hidden">Заполните имя, фамилию, должность и магазин — поля обязательные.</p>
+        <button type="submit" class="btn primary" id="btn-start">Начать тест</button>
+      </form>
+    </section>
+
+    <section id="screen-quiz" class="panel hidden" aria-live="polite">
+      <div class="topbar">
+        <div class="progress-wrap">
+          <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="topmeta">
+          <span id="q-counter">1 / 20</span>
+          <span id="q-topic" class="topic"></span>
+        </div>
+      </div>
+      <div id="q-type" class="q-type mc">Варианты</div>
+      <h2 id="q-text"></h2>
+      <div id="options" class="options" role="radiogroup"></div>
+      <div id="open-wrap" class="open-wrap hidden">
+        <textarea id="open-answer" rows="5" placeholder="Напишите ответ своими словами…"></textarea>
+        <p class="open-hint">Открытый вопрос: оценивается по ключевым словам из правил и инструкции. После теста увидите эталон.</p>
+      </div>
+      <div class="nav">
+        <button type="button" class="btn ghost" id="btn-prev" disabled>Назад</button>
+        <button type="button" class="btn primary" id="btn-next" disabled>Далее</button>
+      </div>
+    </section>
+
+    <section id="screen-result" class="panel hidden">
+      <p class="eyebrow">Результат</p>
+      <h1 id="score-title">Ваш результат</h1>
+      <p class="scoreline"><span id="score-num">0</span><span class="slash">/</span><span id="score-total">20</span></p>
+      <p id="score-percent" class="score-percent"></p>
+      <p id="score-verdict" class="lead"></p>
+      <p id="mail-status" class="mail-status" aria-live="polite"></p>
+
+      <div id="summary-cards" class="summary-cards"></div>
+      <h3 class="section-title">По темам</h3>
+      <div id="topic-stats" class="topic-stats"></div>
+      <div id="weak-block" class="weak-block hidden">
+        <h3 class="section-title">Что подтянуть</h3>
+        <ul id="weak-list" class="weak-list"></ul>
+      </div>
+      <h3 class="section-title">Разбор ответов</h3>
+      <p class="review-hint">Сначала ошибки и частичные ответы, затем верные. Результат также отправлен на e-mail проверяющего.</p>
+      <div id="review" class="review"></div>
+      <button type="button" class="btn primary" id="btn-restart">Пройти ещё раз</button>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap foot-inner">
+      <img class="foot-logo" src="assets/logo.png" alt="" />
+      <p>«У Михалыча» · тест бонусной системы · август 2026 · автор Римберг А.А.</p>
+    </div>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>

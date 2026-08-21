@@ -1,8 +1,8 @@
 :root {
   --p: #4208a8;
   --p2: #5b21d6;
-  --brand: #c81e3a;
-  --brand-soft: rgba(200, 30, 58, 0.08);
+  --brand: #4208a8;
+  --brand-soft: rgba(66, 8, 168, 0.08);
   --bg: #f7f4ff;
   --panel: #ffffff;
   --line: rgba(66, 8, 168, 0.14);
@@ -10,8 +10,8 @@
   --muted: #5c5278;
   --ok: #1f7a4d;
   --ok-bg: #e8f6ee;
-  --bad: #b42318;
-  --bad-bg: #fdecea;
+  --bad: #5b21d6;
+  --bad-bg: #efe9ff;
   --partial: #9a6700;
   --partial-bg: #fff6df;
   --shadow: 0 10px 28px rgba(66, 8, 168, 0.06);
@@ -141,7 +141,7 @@ h1 {
   color: var(--p);
 }
 
-h1 span { color: var(--brand); }
+h1 span { color: var(--p2); }
 
 h2 {
   font-family: var(--display);

@@ -302,6 +302,11 @@ select option { background: #fff; color: var(--text); }
   border: 1px solid var(--line);
 }
 
+#btn-resend {
+  width: 100%;
+  margin: 0 0 1rem;
+}
+
 .topbar { margin-bottom: 1rem; }
 
 .progress-wrap {

@@ -293,6 +293,7 @@ let questions = [];
 let answers = [];
 let current = 0;
 let profile = { firstName: "", lastName: "", name: "", store: "", role: "" };
+let lastMailPayload = null;
 
 const el = {
   start: document.getElementById("screen-start"),
@@ -322,6 +323,7 @@ const el = {
   scoreTitle: document.getElementById("score-title"),
   verdict: document.getElementById("score-verdict"),
   mailStatus: document.getElementById("mail-status"),
+  resend: document.getElementById("btn-resend"),
   summaryCards: document.getElementById("summary-cards"),
   topicStats: document.getElementById("topic-stats"),
   weakBlock: document.getElementById("weak-block"),
@@ -498,53 +500,130 @@ function buildMailPayload(rows, correct, partial, total, pct, byTopic) {
     text.length <= max ? text : `${text.slice(0, max)}\n…(обрезано)`;
 
   return {
-    access_key: WEB3FORMS_KEY,
     subject: `Тест лояльности: ${profile.name} · ${profile.store} · ${profile.role} · ${correct}/${total}`,
-    from_name: "Тест лояльности · У Михалыча",
-    Имя: profile.firstName,
-    Фамилия: profile.lastName,
-    Должность: profile.role,
-    Магазин: profile.store,
-    Балл: `${correct}/${total}`,
-    Процент: `${pct}%`,
-    Частично: String(partial),
-    Темы: clip(topicLines, 3000),
-    Ошибки: clip(wrongLines || "Ошибок нет", 6000),
-    Ответы: clip(allAnswers, 9000),
+    name: profile.name,
+    first_name: profile.firstName,
+    last_name: profile.lastName,
+    store: profile.store,
+    position: profile.role,
+    score: `${correct}/${total}`,
+    percent: `${pct}%`,
+    partial: String(partial),
+    topics: clip(topicLines, 2500),
+    mistakes: clip(wrongLines || "Ошибок нет", 4000),
+    answers: clip(allAnswers, 5000),
     message: `Результат теста лояльности «У Михалыча»\nИмя: ${profile.firstName}\nФамилия: ${profile.lastName}\nДолжность: ${profile.role}\nМагазин: ${profile.store}\nБалл: ${correct}/${total} (${pct}%)\nЧастично: ${partial}`,
   };
 }
 
+async function sendViaFormSubmit(p) {
+  const res = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(TO_EMAIL)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      _subject: p.subject,
+      _template: "table",
+      _captcha: "false",
+      name: p.name,
+      email: TO_EMAIL,
+      first_name: p.first_name,
+      last_name: p.last_name,
+      store: p.store,
+      position: p.position,
+      score: p.score,
+      percent: p.percent,
+      partial: p.partial,
+      topics: p.topics,
+      mistakes: p.mistakes,
+      answers: p.answers,
+      message: p.message,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  const msg = String(data.message || "");
+  if (/confirm|activation|activate|подтверд/i.test(msg)) {
+    const err = new Error(msg);
+    err.activation = true;
+    throw err;
+  }
+  if (!(data.success === true || data.success === "true")) {
+    throw new Error(msg || `FormSubmit HTTP ${res.status}`);
+  }
+  return "formsubmit";
+}
+
+async function sendViaWeb3Forms(p) {
+  const res = await fetch("https://api.web3forms.com/submit", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify({
+      access_key: WEB3FORMS_KEY,
+      subject: p.subject,
+      from_name: "Тест лояльности У Михалыча",
+      name: p.name,
+      email: TO_EMAIL,
+      Имя: p.first_name,
+      Фамилия: p.last_name,
+      Должность: p.position,
+      Магазин: p.store,
+      Балл: p.score,
+      Процент: p.percent,
+      Темы: p.topics,
+      Ошибки: p.mistakes,
+      Ответы: p.answers,
+      message: p.message,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) {
+    throw new Error(data.message || `Web3Forms HTTP ${res.status}`);
+  }
+  return "web3forms";
+}
+
+function mailtoHref(p) {
+  return (
+    `mailto:${TO_EMAIL}?subject=` +
+    encodeURIComponent(p.subject) +
+    "&body=" +
+    encodeURIComponent(`${p.message}\n\n${p.mistakes || ""}`.slice(0, 1600))
+  );
+}
+
 async function sendResultEmail(payload) {
   if (!el.mailStatus) return;
+  lastMailPayload = payload;
+  if (el.resend) el.resend.classList.remove("hidden");
   el.mailStatus.className = "mail-status";
   el.mailStatus.textContent = `Отправляем результат на ${TO_EMAIL}…`;
 
-  try {
-    const res = await fetch("https://api.web3forms.com/submit", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.success === false) {
-      throw new Error(data.message || `HTTP ${res.status}`);
-    }
+  const results = await Promise.allSettled([sendViaFormSubmit(payload), sendViaWeb3Forms(payload)]);
+  const ok = results.filter((r) => r.status === "fulfilled");
+  const activation = results.some((r) => r.status === "rejected" && r.reason && r.reason.activation);
+
+  if (ok.length) {
     el.mailStatus.className = "mail-status ok";
-    el.mailStatus.textContent = `Результат отправлен на ${TO_EMAIL}.`;
-  } catch (err) {
-    console.warn("Web3Forms:", err);
+    el.mailStatus.textContent = `Результат отправлен на ${TO_EMAIL}. Проверьте входящие и папку «Спам».`;
+    return;
+  }
+
+  if (activation) {
     el.mailStatus.className = "mail-status bad";
     el.mailStatus.innerHTML =
-      `Не удалось подтвердить отправку. Проверьте почту ${TO_EMAIL} (в т.ч. «Спам»). <a href="mailto:${TO_EMAIL}?subject=` +
-      encodeURIComponent(payload.subject) +
-      "&body=" +
-      encodeURIComponent((payload.message + "\n\n" + (payload.Ошибки || "")).slice(0, 1200)) +
-      '">Открыть письмо вручную</a>';
+      `FormSubmit отправил на ${TO_EMAIL} письмо подтверждения (тема вроде Activate this form). Откройте его, нажмите ссылку — после этого ответы начнут приходить. Проверьте и «Спам». ` +
+      `<a href="${mailtoHref(payload)}">Открыть письмо вручную</a>`;
+    return;
   }
+
+  el.mailStatus.className = "mail-status bad";
+  el.mailStatus.innerHTML =
+    `Автоматическая отправка не подтвердилась. <a href="${mailtoHref(payload)}">Открыть письмо вручную на ${TO_EMAIL}</a>`;
 }
 
 function grade() {
@@ -752,9 +831,16 @@ el.next.addEventListener("click", () => {
 el.restart.addEventListener("click", () => {
   answers = Array(questions.length).fill(null);
   current = 0;
+  if (el.resend) el.resend.classList.add("hidden");
   show("start");
   window.scrollTo({ top: 0, behavior: "smooth" });
 });
+
+if (el.resend) {
+  el.resend.addEventListener("click", () => {
+    if (lastMailPayload) sendResultEmail(lastMailPayload);
+  });
+}
 
 function setQuestions(data) {
   questions = Array.isArray(data) ? data : [];

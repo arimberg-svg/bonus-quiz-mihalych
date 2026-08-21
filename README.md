@@ -7,7 +7,8 @@
 https://arimberg-svg.github.io/bonus-quiz-mihalych/
 
 Перед стартом обязательны: **имя**, **фамилия**, **должность**, **магазин**.  
-После прохождения результат уходит на **arimberg@gmail.com**.
+После прохождения результат уходит на **arimberg@gmail.com** (FormSubmit + Web3Forms).  
+Первый раз FormSubmit может прислать письмо **Activate this form** — его нужно открыть один раз, иначе ответы не придут.
 
 ## Состав
 
